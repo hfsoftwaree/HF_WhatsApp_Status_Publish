@@ -13,7 +13,7 @@ if errorlevel 1 (
 )
 
 echo Instalando dependencias...
-python -m pip install -r requirements.txt
+python -m pip install playwright
 
 echo Instalando o navegador Chromium...
 python -m playwright install chromium
