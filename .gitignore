@@ -1,0 +1,13 @@
+# Pastas ignoradas
+Config/
+Erros/
+Logs/
+Perfil_WhatsApp/
+Publicados/
+Status/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
