@@ -1146,6 +1146,10 @@ def main() -> None:
 
         return
 
+    # Cria todas as pastas já na primeira execução,
+    # mesmo com o agendamento desativado.
+    create_folders()
+
     # Se desativado, encerra antes de iniciar qualquer
     # navegador ou processo do WhatsApp.
 
@@ -1156,7 +1160,14 @@ def main() -> None:
         print("==============================================")
         print("Agendamento desativado.")
         print("O processo não será iniciado.")
+        print()
+        print("Pastas criadas. Para começar:")
+        print(f"1. Coloque as imagens em: {PENDING_DIR}")
+        print(f"2. Abra: {CONFIG_FILE}")
+        print("   e altere 'agendamento_ativo' para true.")
         print("==============================================\n")
+
+        input("Pressione ENTER para sair...")
 
         return
 
@@ -1183,8 +1194,6 @@ def main() -> None:
     # -------------------------------------------------------
     # 3. SOMENTE AGORA PREPARAR O PROCESSO
     # -------------------------------------------------------
-
-    create_folders()
 
     images = get_images()
 
