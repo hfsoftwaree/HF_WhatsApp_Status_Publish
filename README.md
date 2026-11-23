@@ -2,7 +2,7 @@
 
 Automatiza a publicação diária de imagens no **Status do WhatsApp** usando o WhatsApp Web e o [Playwright](https://playwright.dev/python/).
 
-Coloque as imagens na pasta "Status", defina o horário de publicação no arquivo "config.json que esta dentro da pasta Config" e o programa publica tudo sozinho, na ordem alfabética, movendo cada imagem publicada para pasta "Publicados".
+Coloque as imagens na pasta `Status`, defina o horário de publicação no arquivo `config.json` (dentro da pasta `Config`) e o programa publica tudo sozinho, em ordem alfabética, movendo cada imagem publicada para a pasta `Publicados`.
 
 ## Funcionalidades
 
@@ -18,17 +18,28 @@ Coloque as imagens na pasta "Status", defina o horário de publicação no arqui
 ## Requisitos
 
 - Windows (também deve funcionar em Linux/macOS, mas foi testado no Windows)
-- Python 3.9 ou superior
+- Python 3.9 ou superior (marque **"Add Python to PATH"** durante a instalação)
 - Uma conta de WhatsApp com acesso ao WhatsApp Web
 
 ## Instalação
 
-```bash
-git clone https://github.com/SEU_USUARIO/HF_WhatsApp_Status_Publish.git
-cd HF_WhatsApp_Status_Publish
+1. Instale o [Python](https://www.python.org/downloads/), caso ainda não tenha.
+2. Baixe ou clone o repositório:
 
-pip install playwright
-playwright install chromium
+   ```bash
+   git clone https://github.com/SEU_USUARIO/HF_WhatsApp_Status_Publish.git
+   cd HF_WhatsApp_Status_Publish
+   ```
+
+3. Dê dois cliques em **`Installer.bat`**. Ele instala o Playwright e o navegador Chromium. Isso só precisa ser feito uma vez em cada computador.
+
+### Instalação manual (alternativa)
+
+Se preferir, execute os comandos você mesmo:
+
+```bash
+pip install -r requirements.txt
+python -m playwright install chromium
 ```
 
 ## Configuração
@@ -64,30 +75,33 @@ Outras opções ficam no topo do script (`HF_WhatsApp_Status_Publisher.py`):
 
 1. Em `HF_WhatsApp_Status_Publisher.py`, coloque `START_MINIMIZED = False`.
 2. Coloque ao menos uma imagem na pasta `Status`.
-3. Defina `agendamento_ativo` como `true` e um horário próximo.
-4. Execute o programa e escaneie o QR Code com o celular (**WhatsApp > Aparelhos conectados > Conectar um aparelho**).
+3. Execute `iniciar.bat` uma vez para o programa criar o `Config/config.json`, depois defina `agendamento_ativo` como `true` e um horário próximo.
+4. Execute o programa novamente e escaneie o QR Code com o celular (**WhatsApp > Aparelhos conectados > Conectar um aparelho**).
 5. Depois que a sessão estiver salva, volte `START_MINIMIZED` para `True`.
+
+A sessão fica salva na pasta `Perfil_WhatsApp`, que é local de cada computador. Em cada máquina nova, é preciso escanear o QR Code novamente.
 
 ## Como usar
 
 1. Coloque as imagens na pasta `Status`.
-2. Execute o programa:
+2. Execute o programa com dois cliques em **`iniciar.bat`** ou pelo terminal:
 
    ```bash
    python HF_WhatsApp_Status_Publisher.py
    ```
 
-   ou dê dois cliques em `iniciar.bat`.
 3. O programa aguarda o horário configurado, abre o WhatsApp Web, publica as imagens e encerra.
 
 ## Estrutura de pastas
 
-As pastas abaixo são criadas automaticamente na primeira execução:
+As pastas abaixo, exceto as que já vêm no repositório, são criadas automaticamente na primeira execução:
 
 ```
 HF_WhatsApp_Status_Publish/
 ├── HF_WhatsApp_Status_Publisher.py
 ├── iniciar.bat
+├── instalar.bat
+├── requirements.txt
 ├── Config/            # config.json
 ├── Status/            # imagens a publicar
 ├── Publicados/        # imagens já publicadas
@@ -107,11 +121,12 @@ HF_WhatsApp_Status_Publish/
 
 | Problema | O que fazer |
 |---|---|
+| `instalar.bat` diz que o Python não foi encontrado | Instale o Python e marque "Add Python to PATH" |
 | QR Code não aparece ou não carrega | Defina `START_MINIMIZED = False` e verifique a conexão com a internet |
 | "Não encontrei a área Atualizações/Status" | O WhatsApp Web pode ter mudado a interface. Veja os arquivos em `Erros/` e ajuste os seletores |
 | "Não encontrei o botão Enviar/Publicar" | Mesmo caso acima: ajuste os seletores em `click_send` |
 | A janela não minimiza | Confira o log em `Logs/`. A minimização é feita via Chrome DevTools Protocol |
-| `python` abre a Microsoft Store | Use `py` no lugar de `python` no `.bat` |
+| `python` abre a Microsoft Store | Use `py` no lugar de `python` nos arquivos `.bat` |
 
 ## Aviso
 
