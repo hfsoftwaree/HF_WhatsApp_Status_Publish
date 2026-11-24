@@ -11,7 +11,7 @@ Coloque as imagens na pasta `Status`, defina o horário de publicação no arqui
 - Publica todas as imagens (`.jpg`, `.jpeg`, `.png`) da pasta `Status`, em ordem alfabética
 - Sessão do WhatsApp salva: o QR Code só precisa ser escaneado uma vez
 - Fecha automaticamente pop-ups e avisos do WhatsApp Web
-- Janela do navegador minimizada durante a execução
+- Opção de rodar o navegador minimizado durante a execução
 - Duas tentativas por imagem, com captura de tela e HTML para depuração em caso de erro
 - Move as imagens publicadas para `Publicados` e mantém em `Status` as que falharam
 - Registro das execuções em arquivo de log
@@ -63,7 +63,7 @@ python -m playwright install chromium
 
 ## Configuração
 
-Na primeira execução, o programa cria o arquivo `Config/config.json`:
+Na primeira execução (`Start.bat`), o programa cria o arquivo `Config/config.json`:
 
 ```json
 {
@@ -85,7 +85,7 @@ Outras opções ficam no topo do script (`HF_WhatsApp_Status_Publisher.py`):
 
 | Variável | Descrição |
 |---|---|
-| `START_MINIMIZED` | Minimiza a janela do navegador após abrir |
+| `START_MINIMIZED` | Minimiza a janela do navegador após abrir (padrão: `False`). Pode ser alternado com o `Alternar_Minimizado.bat` |
 | `HEADLESS` | Executa sem janela visível (não recomendado, o WhatsApp Web pode se comportar diferente) |
 | `INTERVAL_SECONDS` | Intervalo entre uma imagem e outra |
 | `CONFIRM_BEFORE_PUBLISHING` | Pede confirmação digitada antes de publicar |
@@ -93,11 +93,12 @@ Outras opções ficam no topo do script (`HF_WhatsApp_Status_Publisher.py`):
 ## Primeira execução (QR Code)
 
 1. Rode o `Installer.bat`, se ainda não o fez.
-2. Em `HF_WhatsApp_Status_Publisher.py`, coloque `START_MINIMIZED = False`.
-3. Coloque ao menos uma imagem na pasta `Status`.
-4. Execute `Start.bat` uma vez para o programa criar o `Config/config.json`, depois defina `agendamento_ativo` como `true` e um horário próximo.
-5. Execute o programa novamente e escaneie o QR Code com o celular (**WhatsApp > Aparelhos conectados > Conectar um aparelho**).
-6. Depois que a sessão estiver salva, volte `START_MINIMIZED` para `True`.
+2. Coloque ao menos uma imagem na pasta `Status`.
+3. Execute `Start.bat` uma vez para o programa criar o `Config/config.json`, depois defina `agendamento_ativo` como `true` e um horário próximo.
+4. Execute o programa novamente e escaneie o QR Code com o celular (**WhatsApp > Aparelhos conectados > Conectar um aparelho**).
+5. Depois que a sessão estiver salva, você pode mudar `START_MINIMIZED` para `True` se preferir que o WhatsApp Web rode minimizado, sem ocupar a tela durante a publicação. Se preferir acompanhar o processo na tela, deixe `False`.
+
+   Para alternar sem editar o código, dê dois cliques em **`Alternar_Minimizado.bat`**: cada execução inverte a opção entre `True` e `False` e informa o novo estado.
 
 A sessão fica salva na pasta `Perfil_WhatsApp`, que é local de cada computador. Em cada máquina nova, é preciso escanear o QR Code novamente.
 
@@ -121,6 +122,7 @@ HF_WhatsApp_Status_Publish/
 ├── HF_WhatsApp_Status_Publisher.py
 ├── Installer.bat
 ├── Start.bat
+├── Alternar_Minimizado.bat
 ├── Config/            # config.json
 ├── Status/            # imagens a publicar
 ├── Publicados/        # imagens já publicadas
@@ -145,7 +147,7 @@ HF_WhatsApp_Status_Publish/
 | Erro ao instalar o Python Install Manager | Verifique a conexão com a internet e se a Microsoft Store está funcionando; tente novamente |
 | Erro ao instalar o Chromium | Verifique a conexão e se antivírus ou firewall não estão bloqueando o download; execute o instalador de novo |
 | `python` não é reconhecido ou abre a Microsoft Store | Use `py` no lugar de `python` (inclusive nos arquivos `.bat`) ou reinicie o terminal depois da instalação |
-| QR Code não aparece ou não carrega | Defina `START_MINIMIZED = False` e verifique a conexão com a internet |
+| QR Code não aparece ou não carrega | Confira se `START_MINIMIZED` está em `False` (padrão) e verifique a conexão com a internet |
 | "Não encontrei a área Atualizações/Status" | O WhatsApp Web pode ter mudado a interface. Veja os arquivos em `Erros/` e ajuste os seletores |
 | "Não encontrei o botão Enviar/Publicar" | Mesmo caso acima: ajuste os seletores em `click_send` |
 | A janela não minimiza | Confira o log em `Logs/`. A minimização é feita via Chrome DevTools Protocol |

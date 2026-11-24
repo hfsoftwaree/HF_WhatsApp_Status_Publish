@@ -1,0 +1,17 @@
+HF WhatsApp Status Publisher - Histórico de atualizações
+=========================================================
+
+Versão 1.1 - 23/11/2026
+-----------------------
+Novidades
+- Installer.bat: instala automaticamente o Python (via Python Install
+  Manager), o Playwright e o Chromium.
+- Alternar_Minimizado.bat: alterna o modo minimizado do navegador sem
+  precisar editar o código.
+
+Alterações
+- Start.bat passa a usar "py" (ou "pymanager exec") em vez de "python".
+- START_MINIMIZED agora vem como False por padrão.
+- requirements.txt removido; o instalador instala o Playwright direto.
+- README atualizado: requisitos, instalação, primeira execução e
+  solução de problemas.
