@@ -53,7 +53,7 @@ HEADLESS = False
 
 # Minimiza a janela do navegador após abrir.
 # Na primeira execução (QR Code), deixe False para poder escanear.
-START_MINIMIZED = True
+START_MINIMIZED = False
 
 # Inicia automaticamente após conectar ao WhatsApp Web.
 CONFIRM_BEFORE_PUBLISHING = False
