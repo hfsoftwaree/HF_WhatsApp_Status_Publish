@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import msvcrt   
 import re
 import shutil
 import sys
@@ -59,7 +60,7 @@ VIDEO_SETTLE_MS = 3_000
 VIDEO_MAX_RECOMMENDED_MB = 16
 
 HEADLESS = False
-START_MINIMIZED = True
+START_MINIMIZED = False
 CONFIRM_BEFORE_PUBLISHING = False
 SCHEDULE_CHECK_SECONDS = 30
 
@@ -69,7 +70,7 @@ SCHEDULE_CHECK_SECONDS = 30
 # ---------------------------------------------------------------------------
 
 DEFAULT_CONFIG = {
-    "agendamento_ativo": False,
+    "agendamento_ativo": True,
     "horario_envio": "08:00",
 }
 
@@ -148,8 +149,9 @@ def load_config() -> dict:
 # AGENDAMENTO
 # ---------------------------------------------------------------------------
 
+
 def wait_for_schedule(config: dict) -> None:
-    """Aguarda o horário diário configurado (sem abrir o navegador)."""
+    """Aguarda o horário diário ou permite iniciar antecipadamente com ESC."""
 
     horario = datetime.strptime(
         config["horario_envio"],
@@ -164,7 +166,6 @@ def wait_for_schedule(config: dict) -> None:
     )
 
     if now > scheduled_datetime + timedelta(minutes=1):
-
         scheduled_datetime += timedelta(days=1)
 
     print("\n==============================================")
@@ -186,10 +187,30 @@ def wait_for_schedule(config: dict) -> None:
     if now < scheduled_datetime:
 
         print("\nAguardando horário programado...")
-        print("O WhatsApp Web ainda não será aberto.")
+        print("Pressione ESC para publicar imediatamente.")
+        print("Ou aguarde o horário configurado.\n")
 
         while True:
 
+            # Verifica se o usuário pressionou alguma tecla.
+            if msvcrt.kbhit():
+
+                key = msvcrt.getch()
+
+                # ESC inicia a publicação imediatamente.
+                if key == b"\x1b":
+
+                    print("\nESC pressionado!")
+                    print("Iniciando publicação antecipadamente...\n")
+
+                    logging.info(
+                        "Agendamento ignorado pelo usuário. "
+                        "Execução antecipada solicitada via ESC."
+                    )
+
+                    return
+
+            # Verifica se o horário programado chegou.
             now = datetime.now()
 
             remaining = (
@@ -199,12 +220,7 @@ def wait_for_schedule(config: dict) -> None:
             if remaining <= 0:
                 break
 
-            time.sleep(
-                min(
-                    SCHEDULE_CHECK_SECONDS,
-                    remaining,
-                )
-            )
+            time.sleep(0.2)
 
     print("\nHorário de publicação atingido!")
 

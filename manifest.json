@@ -1,0 +1,9 @@
+{
+    "versao":  "1.18",
+    "arquivos":  {
+                     "Start.bat":  "ae37e9da86ca0629fd5e6087157ee349a8940cd6ca322cc26f56df62ed92406d",
+                     "Alternar_Minimizado.bat":  "6e46ed8ed2905212c9d9e9b913cf8e65d466ee474e9b972167d9cdb8c61e571d",
+                     "HF_WhatsApp_Status_Publisher.py":  "a8446acaf0fc49130d2e11815835a9784f766658b100c6f97e86ecaa97606b55",
+                     "VerificarAtualizacao.ps1":  "6fb1cb2f36c0b6b502fdd5cf7dafd373a93508ddc2577875d68e27b370bdbff1"
+                 }
+}

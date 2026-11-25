@@ -1,4 +1,5 @@
 # Pastas ignoradas
+cmd/
 Config/
 Erros/
 Logs/

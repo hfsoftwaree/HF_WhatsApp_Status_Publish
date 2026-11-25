@@ -6,8 +6,10 @@ Coloque as imagens e os vídeos na pasta `Status`, defina o horário de publica�
 
 ## Funcionalidades
 
-- Instalador automático: instala o Python, o Playwright e o Chromium com um duplo clique
+- Instalação com um único arquivo (`InstallerProject.bat`): baixa o programa, cria as pastas e instala o Python, o Playwright e o Chromium
+- Atualizações automáticas pelo GitHub, com conferência de integridade (SHA256) e backup dos arquivos substituídos
 - Publicação agendada em um horário diário configurável
+- Tecla **ESC** para publicar imediatamente, sem esperar o horário
 - Publica todas as imagens (`.jpg`, `.jpeg`, `.png`) e vídeos (`.mp4`, `.mov`, `.3gp`) da pasta `Status`, em ordem alfabética
 - Espera inteligente para vídeos: aguarda o carregamento no editor antes de enviar
 - Sessão do WhatsApp salva: o QR Code só precisa ser escaneado uma vez
@@ -19,56 +21,78 @@ Coloque as imagens e os vídeos na pasta `Status`, defina o horário de publica�
 
 ## Requisitos
 
-- **Windows 10 ou 11** com o **WinGet** (Windows Package Manager) disponível. Ele vem com o *App Installer* da Microsoft Store; se estiver faltando, atualize o *App Installer* pela loja.
-- Conexão com a internet durante a instalação
+- **Windows 10 ou 11** (o programa usa recursos exclusivos do Windows)
+- Conexão com a internet durante a instalação e para as atualizações
 - Uma conta de WhatsApp com acesso ao WhatsApp Web
 
-**Você não precisa instalar o Python manualmente.** O `Installer.bat` cuida disso.
-
-> Linux e macOS: o script Python deve funcionar, mas o instalador automático é exclusivo do Windows. Veja [Instalação manual](#instalação-manual-linuxmacos-ou-quem-preferir).
+**Você não precisa instalar o Python manualmente.** O `InstallerProject.bat` cuida disso, instalando o Python apenas para o usuário atual do Windows.
 
 ## Instalação
 
-1. Baixe ou clone o repositório:
+1. Baixe o instalador:
 
-   ```bash
-   git clone https://github.com/SEU_USUARIO/HF_WhatsApp_Status_Publish.git
-   cd HF_WhatsApp_Status_Publish
-   ```
+   [**InstallerProject.bat**](https://github.com/hfsoftwaree/HF_WhatsApp_Status_Publish/releases/download/installer/InstallerProject.bat)
 
-2. Dê dois cliques em **`Installer.bat`**. Isso só precisa ser feito uma vez em cada computador.
+2. Dê dois cliques no arquivo baixado.
+
+   Se o Windows exibir o aviso *"O Windows protegeu seu computador"* (SmartScreen), clique em **Mais informações** e depois em **Executar assim mesmo**.
+
+3. Aguarde o término. Ao final, o instalador pergunta se você quer criar um atalho na área de trabalho.
+
+O programa é instalado em **`C:\HF_WhatsApp`**. Se precisar reinstalar, basta executar o `InstallerProject.bat` de novo: as pastas `Config`, `Status` e `Perfil_WhatsApp` são preservadas.
 
 ### O que o instalador faz
 
-O `Installer.bat` executa seis etapas, mostrando o progresso na tela:
+O `InstallerProject.bat` executa dez etapas, mostrando o progresso na tela:
 
 | Etapa | Ação |
 |---|---|
-| 1/6 | Verifica se o WinGet está disponível |
-| 2/6 | Instala o **Python Install Manager** oficial (via WinGet), caso ainda não exista |
-| 3/6 | Configura o Python Install Manager |
-| 4/6 | Instala o Python estável mais recente |
-| 5/6 | Atualiza o `pip` e instala o **Playwright** |
-| 6/6 | Instala o navegador **Chromium** usado pelo Playwright |
+| 1/10 | Prepara a pasta `C:\HF_WhatsApp` |
+| 2/10 | Baixa o atualizador |
+| 3/10 | Baixa os arquivos do programa, conferindo o SHA256 de cada um |
+| 4/10 | Cria a estrutura de pastas e o `Config/config.json` (somente se ainda não existir) |
+| 5/10 | Baixa e instala a versão estável mais recente do **Python** (instalador oficial do python.org) |
+| 6/10 | Atualiza o `pip` |
+| 7/10 | Instala o **Playwright** |
+| 8/10 | Instala o navegador **Chromium** usado pelo Playwright |
+| 9/10 | Verifica as versões instaladas |
+| 10/10 | Cria o atalho na área de trabalho (opcional) |
 
-Ao final, ele exibe as versões instaladas do Python e do Playwright. Se alguma etapa falhar, uma mensagem de erro é exibida e a janela aguarda uma tecla antes de fechar.
+Se alguma etapa falhar, uma mensagem de erro é exibida e a janela aguarda uma tecla antes de fechar.
 
-### Instalação manual (Linux/macOS ou quem preferir)
+### Instalação manual (para desenvolvedores)
 
-Com o Python 3.9 ou superior já instalado:
+Com o Python 3.9 ou superior já instalado no Windows:
 
 ```bash
+git clone https://github.com/hfsoftwaree/HF_WhatsApp_Status_Publish.git
+cd HF_WhatsApp_Status_Publish
 pip install playwright
 python -m playwright install chromium
+python HF_WhatsApp_Status_Publisher.py
 ```
+
+## Atualizações
+
+A cada abertura, o `Start.bat` verifica se existe uma versão nova, de forma silenciosa:
+
+- Os arquivos locais são comparados (SHA256) com o `manifest.json` publicado no [Release `installer`](https://github.com/hfsoftwaree/HF_WhatsApp_Status_Publish/releases/tag/installer) do GitHub.
+- Somente os arquivos alterados são baixados, e cada um tem o hash conferido antes de substituir o original. Se algum não bater, a atualização é cancelada e nada é alterado.
+- Os arquivos antigos ficam guardados em `Backup_Atualizacao`.
+- Sem internet, o programa segue normalmente com a versão instalada.
+- Uma nova versão do próprio `Start.bat` é aplicada na abertura seguinte.
+- A opção `START_MINIMIZED` escolhida por você é mantida após as atualizações.
+- Suas pastas `Config`, `Status`, `Publicados` e `Perfil_WhatsApp` nunca são alteradas.
+
+Para verificar manualmente, dê dois cliques em **`VerificarAtualizacao.bat`**.
 
 ## Configuração
 
-Na primeira execução (`Start.bat`), o programa cria o arquivo `Config/config.json`:
+O instalador cria o arquivo `Config/config.json` (se ele não existir, o programa também o cria na primeira execução):
 
 ```json
 {
-    "agendamento_ativo": false,
+    "agendamento_ativo": true,
     "horario_envio": "08:00"
 }
 ```
@@ -78,9 +102,9 @@ Na primeira execução (`Start.bat`), o programa cria o arquivo `Config/config.j
 | `agendamento_ativo` | `true` para o programa funcionar, `false` para encerrar sem abrir o navegador |
 | `horario_envio` | Horário diário da publicação, no formato `HH:MM` (ex.: `08:00`) |
 
-Para usar, altere `agendamento_ativo` para `true`.
-
 Se o programa for iniciado depois do horário definido (mais de 1 minuto), ele aguarda até o mesmo horário do dia seguinte. Se for iniciado antes, aguarda até o horário do mesmo dia. O navegador só é aberto quando o horário chega.
+
+Durante a espera, pressione **ESC** para publicar imediatamente.
 
 Outras opções ficam no topo do script (`HF_WhatsApp_Status_Publisher.py`):
 
@@ -102,11 +126,12 @@ Outras opções ficam no topo do script (`HF_WhatsApp_Status_Publisher.py`):
 
 ## Primeira execução (QR Code)
 
-1. Rode o `Installer.bat`, se ainda não o fez.
+1. Execute o `InstallerProject.bat`, se ainda não o fez.
 2. Coloque ao menos uma imagem ou vídeo na pasta `Status`.
-3. Execute `Start.bat` uma vez para o programa criar o `Config/config.json`, depois defina `agendamento_ativo` como `true` e um horário próximo.
-4. Execute o programa novamente e escaneie o QR Code com o celular (**WhatsApp > Aparelhos conectados > Conectar um aparelho**).
-5. Depois que a sessão estiver salva, você pode mudar `START_MINIMIZED` para `True` se preferir que o WhatsApp Web rode minimizado, sem ocupar a tela durante a publicação. Se preferir acompanhar o processo na tela, deixe `False`.
+3. Confira o horário em `Config/config.json` (o padrão é `08:00`).
+4. Execute o `Start.bat` (ou o atalho da área de trabalho). Para não esperar o horário agora, pressione **ESC**.
+5. Escaneie o QR Code com o celular (**WhatsApp > Aparelhos conectados > Conectar um aparelho**).
+6. Depois que a sessão estiver salva, você pode mudar `START_MINIMIZED` para `True` se preferir que o WhatsApp Web rode minimizado, sem ocupar a tela durante a publicação. Se preferir acompanhar o processo na tela, deixe `False`.
 
    Para alternar sem editar o código, dê dois cliques em **`Alternar_Minimizado.bat`**: cada execução inverte a opção entre `True` e `False` e informa o novo estado.
 
@@ -115,30 +140,29 @@ A sessão fica salva na pasta `Perfil_WhatsApp`, que é local de cada computador
 ## Como usar
 
 1. Coloque as imagens e os vídeos na pasta `Status`.
-2. Execute o programa com dois cliques em **`Start.bat`** ou pelo terminal:
+2. Execute o programa com dois cliques em **`Start.bat`** (ou no atalho da área de trabalho).
+3. O programa aguarda o horário configurado (ou o **ESC**), abre o WhatsApp Web, publica os arquivos e encerra.
 
-   ```bash
-   py HF_WhatsApp_Status_Publisher.py
-   ```
-
-3. O programa aguarda o horário configurado, abre o WhatsApp Web, publica os arquivos e encerra.
+> O computador precisa estar ligado e a janela do programa aberta até o horário de publicação.
 
 ## Estrutura de pastas
 
-As pastas abaixo, exceto as que já vêm no repositório, são criadas automaticamente na primeira execução:
+Pasta de instalação (`C:\HF_WhatsApp`). As pastas de dados são criadas automaticamente pelo instalador:
 
 ```
-HF_WhatsApp_Status_Publish/
+C:\HF_WhatsApp\
 ├── HF_WhatsApp_Status_Publisher.py
-├── Installer.bat
 ├── Start.bat
 ├── Alternar_Minimizado.bat
-├── Config/            # config.json
-├── Status/            # imagens e vídeos a publicar
-├── Publicados/        # arquivos já publicados
-├── Erros/             # capturas de tela e HTML de falhas
-├── Logs/              # publicador_status.log
-└── Perfil_WhatsApp/   # sessão do navegador (dados de login)
+├── VerificarAtualizacao.bat
+├── VerificarAtualizacao.ps1
+├── Config/               # config.json
+├── Status/               # imagens e vídeos a publicar
+├── Publicados/           # arquivos já publicados
+├── Erros/                # capturas de tela e HTML de falhas
+├── Logs/                 # publicador_status.log
+├── Perfil_WhatsApp/      # sessão do navegador (dados de login)
+└── Backup_Atualizacao/   # cópias dos arquivos substituídos nas atualizações
 ```
 
 ## Segurança e privacidade
@@ -147,16 +171,18 @@ HF_WhatsApp_Status_Publish/
 - A pasta `Erros/` pode conter capturas de tela com suas conversas e contatos.
 - Todas essas pastas estão listadas no `.gitignore` deste projeto.
 - Para encerrar a sessão do programa, remova o aparelho em **WhatsApp > Aparelhos conectados** no celular.
+- As atualizações são baixadas apenas do Release deste repositório e conferidas por SHA256, o que detecta arquivos corrompidos ou incompletos.
 
 ## Solução de problemas
 
 | Problema | O que fazer |
 |---|---|
-| `Installer.bat` diz "WinGet não encontrado" | Atualize o **App Installer** pela Microsoft Store e execute o instalador novamente |
-| "Python Install Manager não foi localizado" | Reinicie o Windows e execute o `Installer.bat` de novo |
-| Erro ao instalar o Python Install Manager | Verifique a conexão com a internet e se a Microsoft Store está funcionando; tente novamente |
+| O Windows bloqueia o `InstallerProject.bat` (SmartScreen) | Clique em **Mais informações** e depois em **Executar assim mesmo** |
+| "Não foi possível baixar os arquivos" | Verifique a conexão com a internet e se antivírus ou firewall não estão bloqueando o download; execute o instalador de novo |
+| "ERRO ao instalar Python" | Verifique a conexão (o instalador baixa o Python do python.org) e se o antivírus não está bloqueando; execute o instalador de novo |
 | Erro ao instalar o Chromium | Verifique a conexão e se antivírus ou firewall não estão bloqueando o download; execute o instalador de novo |
-| `python` não é reconhecido ou abre a Microsoft Store | Use `py` no lugar de `python` (inclusive nos arquivos `.bat`) ou reinicie o terminal depois da instalação |
+| `python` não é reconhecido ao abrir o `Start.bat` | Feche e abra o programa novamente ou reinicie o Windows, para o sistema reconhecer o Python recém-instalado. Se persistir, execute o `InstallerProject.bat` de novo |
+| "Atualização cancelada" ou "Hash inválido" | O Release pode estar sendo atualizado ou o download foi corrompido. Nada foi alterado; tente novamente mais tarde com o `VerificarAtualizacao.bat` |
 | QR Code não aparece ou não carrega | Confira se `START_MINIMIZED` está em `False` (padrão) e verifique a conexão com a internet |
 | "Não encontrei a área Atualizações/Status" | O WhatsApp Web pode ter mudado a interface. Veja os arquivos em `Erros/` e ajuste os seletores |
 | "Não encontrei o botão Enviar/Publicar" | Mesmo caso acima: ajuste os seletores em `click_send` |

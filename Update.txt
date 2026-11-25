@@ -1,5 +1,43 @@
 HF WhatsApp Status Publisher - Histórico de atualizações
 =========================================================
+
+-----------------------
+Versão 1.18 - 25/11/2026
+-----------------------
+Novidades
+- InstallerProject.bat: instalador de um único arquivo. Cria a pasta
+  C:\HF_WhatsApp, baixa os arquivos do programa, cria as pastas e o
+  config.json, instala o Python (versão estável mais recente do python.org),
+  o pip, o Playwright e o Chromium, e oferece a criação de um atalho na área
+  de trabalho.
+- Atualização automática: VerificarAtualizacao.bat e VerificarAtualizacao.ps1
+  comparam o SHA256 dos arquivos locais com o manifest.json do Release
+  "installer" no GitHub, baixam somente o que mudou, conferem o hash antes de
+  substituir e guardam backup em Backup_Atualizacao.
+- O Start.bat verifica atualizações em silêncio ao abrir (sem internet, segue
+  normalmente) e aplica a nova versão de si mesmo na abertura seguinte.
+- Tecla ESC durante a espera do agendamento: inicia a publicação
+  imediatamente, sem esperar o horário.
+
+Alterações
+- A instalação do Python passou a usar o instalador oficial do python.org,
+  apenas para o usuário atual. O WinGet e o Python Install Manager não são
+  mais necessários.
+- Installer.bat (Installer_Python_e_Dependencias.bat) removido; substituído
+  pelo InstallerProject.bat.
+- O config.json agora é criado com "agendamento_ativo": true (antes false).
+- Start.bat usa "py" quando disponível e "python" nos demais casos.
+- A escolha de START_MINIMIZED é preservada nas atualizações.
+- README atualizado: instalação, atualizações, ESC, estrutura de pastas e
+  solução de problemas.
+
+Observações
+- O programa passou a ser exclusivo do Windows (usa o módulo msvcrt para
+  detectar a tecla ESC).
+- No Windows, se aparecer o aviso do SmartScreen ao abrir o
+  InstallerProject.bat, clique em "Mais informações" e "Executar assim mesmo".
+
+
 -----------------------
 Versão 1.2 - 25/11/2026
 -----------------------
