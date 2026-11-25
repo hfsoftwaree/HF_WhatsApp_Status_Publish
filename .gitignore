@@ -7,6 +7,11 @@ Perfil_WhatsApp/
 Publicados/
 Status/
 
+# Ignorar arquivos específicos
+manifest.json
+VerificarAtualizacao.bat
+VerificarAtualizacao.ps1
+
 # Python
 __pycache__/
 *.pyc
