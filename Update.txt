@@ -1,6 +1,31 @@
 HF WhatsApp Status Publisher - Histórico de atualizações
 =========================================================
+-----------------------
+Versão 1.2 - 25/11/2026
+-----------------------
+Novidades
+- Suporte a vídeos nos Status: além de JPG, JPEG e PNG, agora são aceitos
+  arquivos MP4, MOV e 3GP na pasta Status.
+- Espera inteligente para vídeos: o programa aguarda o vídeo carregar no
+  editor e o botão Enviar ficar disponível antes de publicar (até 2 minutos).
+- Aviso no log quando o vídeo ultrapassa 16 MB.
+- O resumo inicial passa a mostrar a quantidade de imagens e de vídeos
+  encontrados.
 
+Alterações
+- Tempo de espera após o envio aumentado para vídeos (até 90 segundos).
+- Funções renomeadas internamente: get_images -> get_media_files e
+  attach_image -> attach_media.
+- Mensagens e logs atualizados de "imagem" para "arquivo/mídia".
+
+Observações
+- Formato recomendado para vídeo: MP4 (H.264 + AAC), até 16 MB e duração
+  curta (cerca de 1 minuto).
+- Se a prévia do vídeo não carregar no navegador do Playwright, ative
+  channel="chrome" no código para usar o Google Chrome instalado.
+
+
+-----------------------
 Versão 1.1 - 23/11/2026
 -----------------------
 Novidades

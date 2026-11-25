@@ -22,7 +22,6 @@ from playwright.sync_api import (
 # CONFIGURAÇÕES
 # ---------------------------------------------------------------------------
 
-# Diretório onde este arquivo Python está localizado.
 BASE_DIR = Path(__file__).resolve().parent
 
 CONFIG_DIR = BASE_DIR / "Config"
@@ -39,26 +38,29 @@ INTERVAL_SECONDS = 10
 PAGE_LOAD_TIMEOUT_MS = 60_000
 ELEMENT_TIMEOUT_MS = 15_000
 
-# Esperas de inicialização
 INITIAL_CONNECTION_WAIT_SECONDS = 10
 STATUS_SYNC_WAIT_SECONDS = 10
 
-# Tempo após fechar cada pop-up
 POPUP_WAIT_MS = 700
 
+# --- Tipos de arquivo aceitos ---------------------------------------------
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png"}
+VIDEO_EXTENSIONS = {".mp4", ".mov", ".3gp"}
+MEDIA_EXTENSIONS = IMAGE_EXTENSIONS | VIDEO_EXTENSIONS
 
-# False = navegador visível (mas pode ficar minimizado).
+# --- Ajustes específicos para vídeo ---------------------------------------
+# Tempo máximo esperando o botão Enviar ficar disponível (vídeo).
+VIDEO_SEND_READY_TIMEOUT_MS = 120_000
+# Tempo máximo esperando o editor fechar após enviar (vídeo).
+VIDEO_AFTER_SEND_TIMEOUT_MS = 90_000
+# Espera extra de estabilização após o editor carregar o vídeo.
+VIDEO_SETTLE_MS = 3_000
+# Avisa no log se o vídeo passar deste tamanho (o WhatsApp pode recusar).
+VIDEO_MAX_RECOMMENDED_MB = 16
+
 HEADLESS = False
-
-# Minimiza a janela do navegador após abrir.
-# Na primeira execução (QR Code), deixe False para poder escanear.
-START_MINIMIZED = False
-
-# Inicia automaticamente após conectar ao WhatsApp Web.
+START_MINIMIZED = True
 CONFIRM_BEFORE_PUBLISHING = False
-
-# Verifica o horário a cada 30 segundos enquanto aguarda.
 SCHEDULE_CHECK_SECONDS = 30
 
 
@@ -147,17 +149,7 @@ def load_config() -> dict:
 # ---------------------------------------------------------------------------
 
 def wait_for_schedule(config: dict) -> None:
-    """
-    Aguarda o horário diário configurado.
-
-    Se o programa for iniciado antes do horário,
-    aguarda até o horário do mesmo dia.
-
-    Se for iniciado depois do horário, aguarda
-    até o próximo dia.
-
-    Não abre o navegador durante a espera.
-    """
+    """Aguarda o horário diário configurado (sem abrir o navegador)."""
 
     horario = datetime.strptime(
         config["horario_envio"],
@@ -171,8 +163,6 @@ def wait_for_schedule(config: dict) -> None:
         horario,
     )
 
-    # Se já passou mais de um minuto do horário,
-    # considera o próximo dia.
     if now > scheduled_datetime + timedelta(minutes=1):
 
         scheduled_datetime += timedelta(days=1)
@@ -260,15 +250,21 @@ def create_folders() -> None:
         folder.mkdir(parents=True, exist_ok=True)
 
 
-def get_images() -> list[Path]:
-    """Retorna as imagens pendentes em ordem alfabética."""
+def is_video(path: Path) -> bool:
+    """Indica se o arquivo é um vídeo."""
+
+    return path.suffix.lower() in VIDEO_EXTENSIONS
+
+
+def get_media_files() -> list[Path]:
+    """Retorna imagens e vídeos pendentes em ordem alfabética."""
 
     return sorted(
         (
             path
             for path in PENDING_DIR.iterdir()
             if path.is_file()
-            and path.suffix.lower() in IMAGE_EXTENSIONS
+            and path.suffix.lower() in MEDIA_EXTENSIONS
         ),
         key=lambda path: path.name.lower(),
     )
@@ -408,10 +404,7 @@ def minimize_window(page) -> None:
 # ---------------------------------------------------------------------------
 
 def dismiss_popups(page) -> int:
-    """
-    Procura janelas de propaganda, avisos e apresentações
-    do WhatsApp Web e tenta fechá-las.
-    """
+    """Procura avisos/propagandas do WhatsApp Web e tenta fechá-los."""
 
     dismissed_count = 0
 
@@ -624,13 +617,7 @@ def wait_for_whatsapp(page) -> None:
 # ---------------------------------------------------------------------------
 
 def hard_reload_page(page) -> None:
-    """
-    Recarrega o WhatsApp Web desabilitando temporariamente
-    o cache HTTP do navegador.
-
-    Preserva cookies e sessão de autenticação.
-    Não apaga os dados do perfil.
-    """
+    """Recarrega o WhatsApp Web sem cache HTTP (preserva a sessão)."""
 
     logging.info(
         "Iniciando recarga forçada do WhatsApp Web..."
@@ -736,17 +723,7 @@ def open_updates(page) -> None:
 # ---------------------------------------------------------------------------
 
 def synchronize_status(page) -> None:
-    """
-    Executa a sequência de inicialização:
-
-    1. Aguarda conexão.
-    2. Fecha pop-ups.
-    3. Aguarda estabilização.
-    4. Recarrega a página sem cache HTTP.
-    5. Fecha novamente eventuais pop-ups.
-    6. Abre Atualizações.
-    7. Aguarda a sincronização.
-    """
+    """Sequência de inicialização antes de publicar."""
 
     print("\n----------------------------------------------")
     print("SINCRONIZAÇÃO DO WHATSAPP")
@@ -804,12 +781,7 @@ def synchronize_status(page) -> None:
 # ---------------------------------------------------------------------------
 
 def select_add_status_button(page) -> None:
-    """
-    Abre o fluxo de criação de um novo Status.
-
-    Prioriza o botão "+" / "Adicionar status". Só usa "Meu status"
-    como último recurso.
-    """
+    """Abre o fluxo de criação de um novo Status."""
 
     plus_selectors = [
         'button[aria-label*="Adicionar status" i]',
@@ -860,19 +832,60 @@ def select_add_status_button(page) -> None:
 
 
 # ---------------------------------------------------------------------------
-# ANEXAR IMAGEM
+# ANEXAR MÍDIA (IMAGEM OU VÍDEO)
 # ---------------------------------------------------------------------------
 
-def attach_image(page, image_path: Path) -> None:
-    """Anexa a imagem ao editor de Status."""
+def attach_media(page, media_path: Path) -> None:
+    """Anexa a imagem ou o vídeo ao editor de Status."""
 
+    video = is_video(media_path)
+    kind = "vídeo" if video else "imagem"
+
+    if video:
+
+        size_mb = media_path.stat().st_size / (1024 * 1024)
+
+        if size_mb > VIDEO_MAX_RECOMMENDED_MB:
+
+            logging.warning(
+                "O vídeo %s tem %.1f MB (recomendado até %s MB). "
+                "O WhatsApp pode recusar ou demorar mais.",
+                media_path.name,
+                size_mb,
+                VIDEO_MAX_RECOMMENDED_MB,
+            )
+
+    # --- 1ª tentativa: input[type=file] direto ---------------------------
     file_inputs = page.locator('input[type="file"]')
 
     try:
 
         count = file_inputs.count()
 
-        for index in range(count):
+        # Para vídeo, prioriza inputs que declaram aceitar vídeo.
+        ordered_indexes = list(range(count))
+
+        if video:
+
+            def accepts_video(index: int) -> bool:
+
+                try:
+
+                    accept = (
+                        file_inputs.nth(index).get_attribute("accept")
+                        or ""
+                    ).lower()
+
+                except Exception:
+                    return False
+
+                return "video" in accept
+
+            ordered_indexes.sort(
+                key=lambda index: 0 if accepts_video(index) else 1
+            )
+
+        for index in ordered_indexes:
 
             candidate = file_inputs.nth(index)
 
@@ -880,16 +893,26 @@ def attach_image(page, image_path: Path) -> None:
                 candidate.get_attribute("accept") or ""
             ).lower()
 
-            if not accept or "image" in accept or "*" in accept:
+            if video:
+                compatible = (
+                    not accept or "video" in accept or "*" in accept
+                )
+            else:
+                compatible = (
+                    not accept or "image" in accept or "*" in accept
+                )
+
+            if compatible:
 
                 candidate.set_input_files(
-                    str(image_path),
+                    str(media_path),
                     timeout=ELEMENT_TIMEOUT_MS,
                 )
 
                 logging.info(
-                    "Imagem selecionada: %s",
-                    image_path.name,
+                    "Arquivo (%s) selecionado: %s",
+                    kind,
+                    media_path.name,
                 )
 
                 return
@@ -897,6 +920,7 @@ def attach_image(page, image_path: Path) -> None:
     except Exception:
         pass
 
+    # --- 2ª tentativa: botões que abrem o seletor de arquivos ------------
     buttons = [
         'button[aria-label*="Fotos" i]',
         'button[aria-label*="Photos" i]',
@@ -921,12 +945,13 @@ def attach_image(page, image_path: Path) -> None:
                     locator.click()
 
                 chooser_info.value.set_files(
-                    str(image_path)
+                    str(media_path)
                 )
 
                 logging.info(
-                    "Imagem selecionada pelo seletor: %s",
-                    image_path.name,
+                    "Arquivo (%s) selecionado pelo botão: %s",
+                    kind,
+                    media_path.name,
                 )
 
                 return
@@ -934,6 +959,7 @@ def attach_image(page, image_path: Path) -> None:
         except Exception:
             continue
 
+    # --- 3ª tentativa: itens de menu -------------------------------------
     menu_items = [
         '[role="menuitem"]:has-text("Fotos e vídeos")',
         '[role="menuitem"]:has-text("Photos & videos")',
@@ -958,12 +984,13 @@ def attach_image(page, image_path: Path) -> None:
                     locator.click()
 
                 chooser_info.value.set_files(
-                    str(image_path)
+                    str(media_path)
                 )
 
                 logging.info(
-                    "Imagem selecionada pelo menu: %s",
-                    image_path.name,
+                    "Arquivo (%s) selecionado pelo menu: %s",
+                    kind,
+                    media_path.name,
                 )
 
                 return
@@ -972,8 +999,93 @@ def attach_image(page, image_path: Path) -> None:
             continue
 
     raise RuntimeError(
-        "Não consegui anexar a imagem. "
+        f"Não consegui anexar o {kind}. "
         "O WhatsApp Web pode ter alterado o fluxo de publicação."
+    )
+
+
+# ---------------------------------------------------------------------------
+# AGUARDAR O EDITOR FICAR PRONTO PARA ENVIAR
+# ---------------------------------------------------------------------------
+
+SEND_SELECTORS = [
+    'button[aria-label="Enviar"]',
+    'button[aria-label*="Enviar" i]',
+    '[role="button"][aria-label*="Enviar" i]',
+    'button[aria-label="Send"]',
+    'button[aria-label*="Send" i]',
+    '[role="button"][aria-label*="Send" i]',
+    'button[title="Enviar"]',
+    'button[title="Send"]',
+    'span[data-icon="send"]',
+]
+
+
+def wait_for_send_ready(page, media_path: Path) -> None:
+    """
+    Aguarda o editor carregar a mídia e o botão de envio aparecer.
+
+    Imagens: espera curta.
+    Vídeos: espera até o botão Enviar ficar visível e habilitado
+    (o WhatsApp processa o vídeo antes de liberar o envio).
+    """
+
+    if not is_video(media_path):
+
+        page.wait_for_timeout(2_000)
+
+        return
+
+    logging.info(
+        "Aguardando o vídeo carregar no editor: %s",
+        media_path.name,
+    )
+
+    deadline = time.monotonic() + (
+        VIDEO_SEND_READY_TIMEOUT_MS / 1000
+    )
+
+    while time.monotonic() < deadline:
+
+        for selector in SEND_SELECTORS:
+
+            try:
+
+                locator = page.locator(selector).last
+
+                if not locator.is_visible(timeout=500):
+                    continue
+
+                # Se o botão estiver desabilitado, continua esperando.
+                disabled = page.evaluate(
+                    """
+                    (el) => {
+                        const btn = el.closest('button, [role="button"]') || el;
+                        return btn.disabled === true
+                            || btn.getAttribute('aria-disabled') === 'true';
+                    }
+                    """,
+                    locator.element_handle(),
+                )
+
+                if not disabled:
+
+                    page.wait_for_timeout(VIDEO_SETTLE_MS)
+
+                    logging.info(
+                        "Vídeo pronto para envio."
+                    )
+
+                    return
+
+            except Exception:
+                continue
+
+        page.wait_for_timeout(1_000)
+
+    raise RuntimeError(
+        "O vídeo não ficou pronto para envio dentro do tempo limite. "
+        "Verifique formato (MP4 H.264/AAC), duração e tamanho."
     )
 
 
@@ -984,16 +1096,7 @@ def attach_image(page, image_path: Path) -> None:
 def click_send(page) -> None:
     """Clica em Enviar/Publicar no editor de Status."""
 
-    selectors = [
-        'button[aria-label="Enviar"]',
-        'button[aria-label*="Enviar" i]',
-        '[role="button"][aria-label*="Enviar" i]',
-        'button[aria-label="Send"]',
-        'button[aria-label*="Send" i]',
-        '[role="button"][aria-label*="Send" i]',
-        'button[title="Enviar"]',
-        'button[title="Send"]',
-        'span[data-icon="send"]',
+    selectors = SEND_SELECTORS + [
         'button:has-text("Publicar")',
         'button:has-text("Post")',
     ]
@@ -1024,7 +1127,7 @@ def click_send(page) -> None:
 
     raise RuntimeError(
         "Não encontrei o botão Enviar/Publicar. "
-        "A imagem pode estar no editor, mas não foi enviada."
+        "A mídia pode estar no editor, mas não foi enviada."
     )
 
 
@@ -1032,7 +1135,7 @@ def click_send(page) -> None:
 # AGUARDAR PROCESSAMENTO DO ENVIO
 # ---------------------------------------------------------------------------
 
-def wait_after_send(page) -> None:
+def wait_after_send(page, media_path: Path) -> None:
     """
     Espera o envio e devolve a interface a um estado limpo.
 
@@ -1042,11 +1145,17 @@ def wait_after_send(page) -> None:
 
     page.wait_for_timeout(3_000)
 
+    timeout = (
+        VIDEO_AFTER_SEND_TIMEOUT_MS
+        if is_video(media_path)
+        else 15_000
+    )
+
     try:
 
         page.locator('[data-icon="send"]').last.wait_for(
             state="hidden",
-            timeout=15_000,
+            timeout=timeout,
         )
 
     except Exception:
@@ -1055,21 +1164,24 @@ def wait_after_send(page) -> None:
             "O editor pode não ter fechado após o envio."
         )
 
-    page.wait_for_timeout(2_000)
+    page.wait_for_timeout(
+        4_000 if is_video(media_path) else 2_000
+    )
 
     reset_ui(page)
 
 
 # ---------------------------------------------------------------------------
-# PUBLICAR UMA IMAGEM
+# PUBLICAR UM ARQUIVO
 # ---------------------------------------------------------------------------
 
-def publish_one(page, image_path: Path) -> bool:
-    """Executa o fluxo de publicação de uma imagem (com 2 tentativas)."""
+def publish_one(page, media_path: Path) -> bool:
+    """Executa o fluxo de publicação de uma imagem ou vídeo (2 tentativas)."""
 
     logging.info(
-        "Iniciando publicação: %s",
-        image_path.name,
+        "Iniciando publicação (%s): %s",
+        "vídeo" if is_video(media_path) else "imagem",
+        media_path.name,
     )
 
     last_error: Exception | None = None
@@ -1088,17 +1200,17 @@ def publish_one(page, image_path: Path) -> bool:
 
             select_add_status_button(page)
 
-            attach_image(page, image_path)
+            attach_media(page, media_path)
 
-            page.wait_for_timeout(2_000)
+            wait_for_send_ready(page, media_path)
 
             click_send(page)
 
-            wait_after_send(page)
+            wait_after_send(page, media_path)
 
             logging.info(
                 "Etapa de envio concluída: %s",
-                image_path.name,
+                media_path.name,
             )
 
             return True
@@ -1110,13 +1222,13 @@ def publish_one(page, image_path: Path) -> bool:
             logging.warning(
                 "Tentativa %s falhou para %s: %s",
                 attempt,
-                image_path.name,
+                media_path.name,
                 error,
             )
 
             save_debug(
                 page,
-                f"tentativa{attempt}_{image_path.stem}",
+                f"tentativa{attempt}_{media_path.stem}",
             )
 
             reset_ui(page)
@@ -1130,10 +1242,7 @@ def publish_one(page, image_path: Path) -> bool:
 
 def main() -> None:
 
-    # -------------------------------------------------------
-    # 1. PRIMEIRO: VERIFICAR A CONFIGURAÇÃO
-    # -------------------------------------------------------
-
+    # 1. Verificar a configuração
     try:
 
         config = load_config()
@@ -1146,12 +1255,7 @@ def main() -> None:
 
         return
 
-    # Cria todas as pastas já na primeira execução,
-    # mesmo com o agendamento desativado.
     create_folders()
-
-    # Se desativado, encerra antes de iniciar qualquer
-    # navegador ou processo do WhatsApp.
 
     if not config["agendamento_ativo"]:
 
@@ -1162,7 +1266,7 @@ def main() -> None:
         print("O processo não será iniciado.")
         print()
         print("Pastas criadas. Para começar:")
-        print(f"1. Coloque as imagens em: {PENDING_DIR}")
+        print(f"1. Coloque imagens/vídeos em: {PENDING_DIR}")
         print(f"2. Abra: {CONFIG_FILE}")
         print("   e altere 'agendamento_ativo' para true.")
         print("==============================================\n")
@@ -1171,10 +1275,7 @@ def main() -> None:
 
         return
 
-    # -------------------------------------------------------
-    # 2. CONFIGURAR LOG E AGUARDAR O HORÁRIO
-    # -------------------------------------------------------
-
+    # 2. Log e espera do horário
     configure_logging()
 
     try:
@@ -1191,39 +1292,46 @@ def main() -> None:
 
         return
 
-    # -------------------------------------------------------
-    # 3. SOMENTE AGORA PREPARAR O PROCESSO
-    # -------------------------------------------------------
+    # 3. Preparar o processo
+    media_files = get_media_files()
 
-    images = get_images()
+    video_count = sum(1 for path in media_files if is_video(path))
+    image_count = len(media_files) - video_count
 
     print("\n==============================================")
     print("       HF WHATSAPP STATUS PUBLISHER")
     print("==============================================")
-    print(f"Pasta de imagens   : {PENDING_DIR}")
-    print(f"Imagens encontradas: {len(images)}")
+    print(f"Pasta de mídias    : {PENDING_DIR}")
+    print(f"Arquivos           : {len(media_files)} "
+          f"({image_count} imagem(ns), {video_count} vídeo(s))")
     print(f"Intervalo          : {INTERVAL_SECONDS} segundos")
     print(f"Horário agendado   : {config['horario_envio']}")
     print(f"Navegador          : {'MINIMIZADO' if START_MINIMIZED else 'VISÍVEL'}")
     print("==============================================\n")
 
     logging.info(
-        "Iniciando publicador. Imagens encontradas: %s",
-        len(images),
+        "Iniciando publicador. Arquivos encontrados: %s "
+        "(imagens=%s, vídeos=%s)",
+        len(media_files),
+        image_count,
+        video_count,
     )
 
-    if not images:
+    if not media_files:
 
         logging.info(
-            "Nenhuma imagem encontrada na pasta Status."
+            "Nenhum arquivo encontrado na pasta Status."
         )
 
         input("Pressione ENTER para sair...")
 
         return
 
-    for image_path in images:
-        print(f" - {image_path.name}")
+    for media_path in media_files:
+
+        tag = "VÍDEO " if is_video(media_path) else "IMAGEM"
+
+        print(f" - [{tag}] {media_path.name}")
 
     if CONFIRM_BEFORE_PUBLISHING:
 
@@ -1244,10 +1352,7 @@ def main() -> None:
 
     try:
 
-        # ---------------------------------------------------
-        # 4. INICIAR PLAYWRIGHT E ABRIR WHATSAPP
-        # ---------------------------------------------------
-
+        # 4. Iniciar Playwright e abrir WhatsApp
         with sync_playwright() as playwright:
 
             browser_args = []
@@ -1256,12 +1361,10 @@ def main() -> None:
 
             if START_MINIMIZED and not HEADLESS:
 
-                # Evita que o Playwright force o tamanho da janela.
                 launch_options["no_viewport"] = True
 
                 browser_args += [
                     "--start-minimized",
-                    # Impede o Chromium de "dormir" a aba minimizada.
                     "--disable-backgrounding-occluded-windows",
                     "--disable-renderer-backgrounding",
                     "--disable-background-timer-throttling",
@@ -1274,10 +1377,17 @@ def main() -> None:
                     "height": 900,
                 }
 
+            # Observação: o Chromium do Playwright não inclui alguns
+            # codecs proprietários (H.264/AAC), mas isso afeta apenas
+            # a PRÉ-VISUALIZAÇÃO do vídeo no editor. O arquivo é enviado
+            # normalmente. Se a prévia não carregar e o envio falhar,
+            # troque para o Chrome instalado adicionando channel="chrome"
+            # abaixo.
             context = playwright.chromium.launch_persistent_context(
                 user_data_dir=str(PROFILE_DIR),
                 headless=HEADLESS,
                 args=browser_args,
+                # channel="chrome",
                 **launch_options,
             )
 
@@ -1296,8 +1406,6 @@ def main() -> None:
                 wait_until="domcontentloaded",
             )
 
-            # Minimiza a janela via CDP (a flag --start-minimized
-            # sozinha costuma ser ignorada).
             if START_MINIMIZED and not HEADLESS:
                 minimize_window(page)
 
@@ -1322,7 +1430,6 @@ def main() -> None:
                     "A sessão ficará salva para as próximas execuções."
                 )
 
-            # Aguarda a conexão.
             wait_for_whatsapp(page)
 
             logging.info(
@@ -1331,40 +1438,37 @@ def main() -> None:
 
             print("\nWhatsApp conectado com sucesso.")
 
-            # Executa toda a sequência de inicialização.
             synchronize_status(page)
 
-            # Garante que a janela continue minimizada após o reload.
             if START_MINIMIZED and not HEADLESS:
                 minimize_window(page)
 
-            # ------------------------------------------------
-            # 5. PUBLICAR AS IMAGENS
-            # ------------------------------------------------
+            # 5. Publicar os arquivos
+            for index, media_path in enumerate(media_files, start=1):
 
-            for index, image_path in enumerate(images, start=1):
+                tag = "vídeo" if is_video(media_path) else "imagem"
 
                 print(
-                    f"\n[{index}/{len(images)}] "
-                    f"Publicando: {image_path.name}"
+                    f"\n[{index}/{len(media_files)}] "
+                    f"Publicando ({tag}): {media_path.name}"
                 )
 
                 try:
 
                     publish_one(
                         page,
-                        image_path,
+                        media_path,
                     )
 
                     destination = move_file(
-                        image_path,
+                        media_path,
                         PUBLISHED_DIR,
                     )
 
                     published_count += 1
 
                     logging.info(
-                        "Movida para Publicados: %s",
+                        "Movido para Publicados: %s",
                         destination.name,
                     )
 
@@ -1382,30 +1486,29 @@ def main() -> None:
 
                     logging.exception(
                         "Falha ao publicar %s: %s",
-                        image_path.name,
+                        media_path.name,
                         error,
                     )
 
                     print(f"ERRO: {error}")
 
                     print(
-                        "A imagem permanecerá na pasta Status "
+                        "O arquivo permanecerá na pasta Status "
                         "para conferência. O programa continuará "
-                        "com a próxima."
+                        "com o próximo."
                     )
 
-                # Intervalo entre as imagens.
-                if index < len(images):
+                if index < len(media_files):
 
                     print(
                         f"Aguardando {INTERVAL_SECONDS} segundos "
-                        "antes da próxima imagem..."
+                        "antes do próximo arquivo..."
                     )
 
                     time.sleep(INTERVAL_SECONDS)
 
             logging.info(
-                "Processamento das imagens concluído."
+                "Processamento dos arquivos concluído."
             )
 
             context.close()
@@ -1435,7 +1538,7 @@ def main() -> None:
     finally:
 
         try:
-            pending_count = len(get_images())
+            pending_count = len(get_media_files())
         except Exception:
             pending_count = -1
 

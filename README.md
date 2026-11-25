@@ -1,19 +1,20 @@
 # HF WhatsApp Status Publisher
 
-Automatiza a publicação diária de imagens no **Status do WhatsApp** usando o WhatsApp Web e o [Playwright](https://playwright.dev/python/).
+Automatiza a publicação diária de imagens e vídeos no **Status do WhatsApp** usando o WhatsApp Web e o [Playwright](https://playwright.dev/python/).
 
-Coloque as imagens na pasta `Status`, defina o horário de publicação no arquivo `config.json` (dentro da pasta `Config`) e o programa publica tudo sozinho, em ordem alfabética, movendo cada imagem publicada para a pasta `Publicados`.
+Coloque as imagens e os vídeos na pasta `Status`, defina o horário de publicação no arquivo `config.json` (dentro da pasta `Config`) e o programa publica tudo sozinho, em ordem alfabética, movendo cada arquivo publicado para a pasta `Publicados`.
 
 ## Funcionalidades
 
 - Instalador automático: instala o Python, o Playwright e o Chromium com um duplo clique
 - Publicação agendada em um horário diário configurável
-- Publica todas as imagens (`.jpg`, `.jpeg`, `.png`) da pasta `Status`, em ordem alfabética
+- Publica todas as imagens (`.jpg`, `.jpeg`, `.png`) e vídeos (`.mp4`, `.mov`, `.3gp`) da pasta `Status`, em ordem alfabética
+- Espera inteligente para vídeos: aguarda o carregamento no editor antes de enviar
 - Sessão do WhatsApp salva: o QR Code só precisa ser escaneado uma vez
 - Fecha automaticamente pop-ups e avisos do WhatsApp Web
 - Opção de rodar o navegador minimizado durante a execução
-- Duas tentativas por imagem, com captura de tela e HTML para depuração em caso de erro
-- Move as imagens publicadas para `Publicados` e mantém em `Status` as que falharam
+- Duas tentativas por arquivo, com captura de tela e HTML para depuração em caso de erro
+- Move os arquivos publicados para `Publicados` e mantém em `Status` os que falharam
 - Registro das execuções em arquivo de log
 
 ## Requisitos
@@ -87,13 +88,22 @@ Outras opções ficam no topo do script (`HF_WhatsApp_Status_Publisher.py`):
 |---|---|
 | `START_MINIMIZED` | Minimiza a janela do navegador após abrir (padrão: `False`). Pode ser alternado com o `Alternar_Minimizado.bat` |
 | `HEADLESS` | Executa sem janela visível (não recomendado, o WhatsApp Web pode se comportar diferente) |
-| `INTERVAL_SECONDS` | Intervalo entre uma imagem e outra |
+| `INTERVAL_SECONDS` | Intervalo entre um arquivo e outro |
 | `CONFIRM_BEFORE_PUBLISHING` | Pede confirmação digitada antes de publicar |
+| `VIDEO_SEND_READY_TIMEOUT_MS` | Tempo máximo (ms) esperando o vídeo ficar pronto para envio (padrão: 120000) |
+| `VIDEO_AFTER_SEND_TIMEOUT_MS` | Tempo máximo (ms) esperando o envio do vídeo concluir (padrão: 90000) |
+
+## Vídeos
+
+- Formatos aceitos: `.mp4`, `.mov` e `.3gp`. O mais seguro é **MP4 (H.264 + AAC)**.
+- Recomendado: até 16 MB e cerca de 1 minuto de duração. O programa registra um aviso no log se o vídeo passar de 16 MB.
+- Vídeos demoram mais para carregar e enviar, então a publicação de cada um leva mais tempo que a de uma imagem.
+- Se a prévia do vídeo não carregar no navegador do Playwright, abra o script e ative a linha `channel="chrome"` em `launch_persistent_context` para usar o Google Chrome instalado. Nesse caso, será preciso escanear o QR Code novamente.
 
 ## Primeira execução (QR Code)
 
 1. Rode o `Installer.bat`, se ainda não o fez.
-2. Coloque ao menos uma imagem na pasta `Status`.
+2. Coloque ao menos uma imagem ou vídeo na pasta `Status`.
 3. Execute `Start.bat` uma vez para o programa criar o `Config/config.json`, depois defina `agendamento_ativo` como `true` e um horário próximo.
 4. Execute o programa novamente e escaneie o QR Code com o celular (**WhatsApp > Aparelhos conectados > Conectar um aparelho**).
 5. Depois que a sessão estiver salva, você pode mudar `START_MINIMIZED` para `True` se preferir que o WhatsApp Web rode minimizado, sem ocupar a tela durante a publicação. Se preferir acompanhar o processo na tela, deixe `False`.
@@ -104,14 +114,14 @@ A sessão fica salva na pasta `Perfil_WhatsApp`, que é local de cada computador
 
 ## Como usar
 
-1. Coloque as imagens na pasta `Status`.
+1. Coloque as imagens e os vídeos na pasta `Status`.
 2. Execute o programa com dois cliques em **`Start.bat`** ou pelo terminal:
 
    ```bash
    py HF_WhatsApp_Status_Publisher.py
    ```
 
-3. O programa aguarda o horário configurado, abre o WhatsApp Web, publica as imagens e encerra.
+3. O programa aguarda o horário configurado, abre o WhatsApp Web, publica os arquivos e encerra.
 
 ## Estrutura de pastas
 
@@ -124,8 +134,8 @@ HF_WhatsApp_Status_Publish/
 ├── Start.bat
 ├── Alternar_Minimizado.bat
 ├── Config/            # config.json
-├── Status/            # imagens a publicar
-├── Publicados/        # imagens já publicadas
+├── Status/            # imagens e vídeos a publicar
+├── Publicados/        # arquivos já publicados
 ├── Erros/             # capturas de tela e HTML de falhas
 ├── Logs/              # publicador_status.log
 └── Perfil_WhatsApp/   # sessão do navegador (dados de login)
@@ -151,6 +161,8 @@ HF_WhatsApp_Status_Publish/
 | "Não encontrei a área Atualizações/Status" | O WhatsApp Web pode ter mudado a interface. Veja os arquivos em `Erros/` e ajuste os seletores |
 | "Não encontrei o botão Enviar/Publicar" | Mesmo caso acima: ajuste os seletores em `click_send` |
 | A janela não minimiza | Confira o log em `Logs/`. A minimização é feita via Chrome DevTools Protocol |
+| "O vídeo não ficou pronto para envio dentro do tempo limite" | Confira se o vídeo é MP4 (H.264 + AAC), com tamanho e duração moderados. Se a prévia não carrega, ative `channel="chrome"` no script. Aumente `VIDEO_SEND_READY_TIMEOUT_MS` se o vídeo for grande |
+| Vídeo não é publicado e fica em `Status` | Veja os arquivos em `Erros/` e o log em `Logs/` para identificar a etapa que falhou |
 
 ## Aviso
 
